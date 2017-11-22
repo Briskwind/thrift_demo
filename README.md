@@ -3,25 +3,25 @@
 
 ### node.js server (thrift包请安装好)
 ```
-cd node_thrift
-node tf_server.js
+cd node_tf
+node server.js
 ```
 ### node.js client
 ```
-cd node_thrift
-node tf_client.js
+cd node_tf
+node client.js
 ```
 
 
 ### python server (thrift包请安装好)
 ```
-cd tf_python
-python tf_server.py
+cd python_tf
+python server.py
 ```
 
 ### python client 
 ```
-cd tf_python
+cd python_tf
 python tf_client.py
 ```
 
