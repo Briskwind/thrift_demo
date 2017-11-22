@@ -8,6 +8,7 @@ sys.path.append(path)
 
 from python_tf.gen.demo import Demo
 
+import thrift
 from thrift.transport import TSocket
 from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
@@ -19,8 +20,11 @@ def main():
     transport = TTransport.TBufferedTransport(transport)
     protocol = TBinaryProtocol.TBinaryProtocol(transport)
     client = Demo.Client(protocol)
-
-    transport.open()
+    try:
+        transport.open()
+    except thrift.transport.TTransport.TTransportException:
+        print('客户端连接错误')
+        return
 
     client.ping()
     print('调用了ping()')

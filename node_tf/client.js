@@ -33,6 +33,7 @@ client.add(1, 2, function (err, response) {
 client.dict_return('client_key', 'client_value', function (err, response) {
     console.log("dict_return:" + response.key, response.value);
     connection.end();
+    // transport.end()
 
 });
 

@@ -4,7 +4,9 @@ from thriftpy.rpc import make_server
 demo_thrift = thriftpy.load("demo.thrift", module_name="demo_thrift")
 
 print('demo_thrift', dir(demo_thrift))
-class Dispatcher(object):
+
+
+class ThriftpySevices(object):
     def ping(self):
         print("ping")
         return "pong"
@@ -20,7 +22,10 @@ class Dispatcher(object):
         return tem_dict
 
 
-server = make_server(demo_thrift.Demo, Dispatcher(), "127.0.0.1", 9090)
-print('服务开启中...')
-
-server.serve()
+if __name__ == '__main__':
+    server = make_server(demo_thrift.Demo, ThriftpySevices(), "127.0.0.1", 9090)
+    print('Thriftpy Server 服务开启中...')
+    try:
+        server.serve()
+    except KeyboardInterrupt:
+        pass

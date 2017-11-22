@@ -29,4 +29,4 @@ var server = thrift.createServer(Demo, {
 });
 
 server.listen(9090);
-console.log('listening 9090');
+console.log('node js 服务开启 9090');

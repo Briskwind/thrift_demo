@@ -2,15 +2,12 @@ import json
 import sys
 import os
 
-
 path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 sys.path.append(path)
 
-
 from python_tf.gen.demo import Demo
 from python_tf.gen.demo.ttypes import my_dict
-
 
 from thrift.transport import TSocket
 from thrift.transport import TTransport
@@ -19,8 +16,18 @@ from thrift.server import TServer
 
 
 class DemoHandler:
-    def __init__(self):
-        self.log = {}
+    def __init__(self, ip='127.0.0.1', port=9090):
+        self._ip = ip
+        self._port = port
+
+    def make_server(self):
+        # handler = DemoHandler()
+        processor = Demo.Processor(handler)
+        transport = TSocket.TServerSocket(self._ip, self._port)
+        tfactory = TTransport.TBufferedTransportFactory()
+        pfactory = TBinaryProtocol.TBinaryProtocolFactory()
+        server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
+        return server
 
     def ping(self):
         print('服务器收到客户端的ping()调用')
@@ -40,12 +47,9 @@ class DemoHandler:
 
 if __name__ == '__main__':
     handler = DemoHandler()
-    processor = Demo.Processor(handler)
-    transport = TSocket.TServerSocket(port=9090)
-    tfactory = TTransport.TBufferedTransportFactory()
-    pfactory = TBinaryProtocol.TBinaryProtocolFactory()
-
-    server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
+    server = handler.make_server()
     print('服务已经开启')
-
-    server.serve()
+    try:
+        server.serve()
+    except KeyboardInterrupt:
+        pass
