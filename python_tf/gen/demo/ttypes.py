@@ -13,7 +13,7 @@ import sys
 from thrift.transport import TTransport
 
 
-class SharedStruct(object):
+class my_dict(object):
     """
     Attributes:
      - key
@@ -22,7 +22,7 @@ class SharedStruct(object):
 
     thrift_spec = (
         None,  # 0
-        (1, TType.I32, 'key', None, None, ),  # 1
+        (1, TType.STRING, 'key', 'UTF8', None, ),  # 1
         (2, TType.STRING, 'value', 'UTF8', None, ),  # 2
     )
 
@@ -40,8 +40,8 @@ class SharedStruct(object):
             if ftype == TType.STOP:
                 break
             if fid == 1:
-                if ftype == TType.I32:
-                    self.key = iprot.readI32()
+                if ftype == TType.STRING:
+                    self.key = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
                 else:
                     iprot.skip(ftype)
             elif fid == 2:
@@ -58,10 +58,10 @@ class SharedStruct(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, (self.__class__, self.thrift_spec)))
             return
-        oprot.writeStructBegin('SharedStruct')
+        oprot.writeStructBegin('my_dict')
         if self.key is not None:
-            oprot.writeFieldBegin('key', TType.I32, 1)
-            oprot.writeI32(self.key)
+            oprot.writeFieldBegin('key', TType.STRING, 1)
+            oprot.writeString(self.key.encode('utf-8') if sys.version_info[0] == 2 else self.key)
             oprot.writeFieldEnd()
         if self.value is not None:
             oprot.writeFieldBegin('value', TType.STRING, 2)

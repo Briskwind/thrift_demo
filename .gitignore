@@ -1,0 +1,19 @@
+led / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+.DS_Store
+.idea
+
+
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+local_settings.py
+!.gitignore
+
+
+# Logs
+*.log

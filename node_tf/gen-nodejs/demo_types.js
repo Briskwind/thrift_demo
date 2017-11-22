@@ -11,7 +11,7 @@ var Q = thrift.Q;
 
 
 var ttypes = module.exports = {};
-var SharedStruct = module.exports.SharedStruct = function(args) {
+var my_dict = module.exports.my_dict = function(args) {
   this.key = null;
   this.value = null;
   if (args) {
@@ -23,8 +23,8 @@ var SharedStruct = module.exports.SharedStruct = function(args) {
     }
   }
 };
-SharedStruct.prototype = {};
-SharedStruct.prototype.read = function(input) {
+my_dict.prototype = {};
+my_dict.prototype.read = function(input) {
   input.readStructBegin();
   while (true)
   {
@@ -38,8 +38,8 @@ SharedStruct.prototype.read = function(input) {
     switch (fid)
     {
       case 1:
-      if (ftype == Thrift.Type.I32) {
-        this.key = input.readI32();
+      if (ftype == Thrift.Type.STRING) {
+        this.key = input.readString();
       } else {
         input.skip(ftype);
       }
@@ -60,11 +60,11 @@ SharedStruct.prototype.read = function(input) {
   return;
 };
 
-SharedStruct.prototype.write = function(output) {
-  output.writeStructBegin('SharedStruct');
+my_dict.prototype.write = function(output) {
+  output.writeStructBegin('my_dict');
   if (this.key !== null && this.key !== undefined) {
-    output.writeFieldBegin('key', Thrift.Type.I32, 1);
-    output.writeI32(this.key);
+    output.writeFieldBegin('key', Thrift.Type.STRING, 1);
+    output.writeString(this.key);
     output.writeFieldEnd();
   }
   if (this.value !== null && this.value !== undefined) {

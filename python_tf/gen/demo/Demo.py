@@ -9,28 +9,21 @@
 from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
 from thrift.protocol.TProtocol import TProtocolException
 import sys
-
-from gen import shared
-
-from gen.shared import SharedService
 import logging
 from .ttypes import *
 from thrift.Thrift import TProcessor
 from thrift.transport import TTransport
 
 
-class Iface(gen.shared.SharedService.Iface):
-    """
-    Ahh, now onto the cool part, defining a service. Services just need a name
-    and can optionally inherit from another service using the extends keyword.
-    """
-
+class Iface(object):
     def ping(self):
+        pass
+
+    def dict_return(self, key, name):
         """
-        A method definition looks like C code. It has a return type, arguments,
-        and optionally a list of exceptions that it may throw. Note that argument
-        lists and exception lists are specified using the exact same syntax as
-        field lists in struct or exception definitions.
+        Parameters:
+         - key
+         - name
         """
         pass
 
@@ -42,39 +35,15 @@ class Iface(gen.shared.SharedService.Iface):
         """
         pass
 
-    def calculate(self, logid, w):
-        """
-        Parameters:
-         - logid
-         - w
-        """
-        pass
 
-    def zip(self):
-        """
-        This method has a oneway modifier. That means the client only makes
-        a request and does not listen for any response at all. Oneway methods
-        must be void.
-        """
-        pass
-
-
-class Client(shared.SharedService.Client, Iface):
-    """
-    Ahh, now onto the cool part, defining a service. Services just need a name
-    and can optionally inherit from another service using the extends keyword.
-    """
-
+class Client(Iface):
     def __init__(self, iprot, oprot=None):
-        shared.SharedService.Client.__init__(self, iprot, oprot)
+        self._iprot = self._oprot = iprot
+        if oprot is not None:
+            self._oprot = oprot
+        self._seqid = 0
 
     def ping(self):
-        """
-        A method definition looks like C code. It has a return type, arguments,
-        and optionally a list of exceptions that it may throw. Note that argument
-        lists and exception lists are specified using the exact same syntax as
-        field lists in struct or exception definitions.
-        """
         self.send_ping()
         self.recv_ping()
 
@@ -97,6 +66,39 @@ class Client(shared.SharedService.Client, Iface):
         result.read(iprot)
         iprot.readMessageEnd()
         return
+
+    def dict_return(self, key, name):
+        """
+        Parameters:
+         - key
+         - name
+        """
+        self.send_dict_return(key, name)
+        return self.recv_dict_return()
+
+    def send_dict_return(self, key, name):
+        self._oprot.writeMessageBegin('dict_return', TMessageType.CALL, self._seqid)
+        args = dict_return_args()
+        args.key = key
+        args.name = name
+        args.write(self._oprot)
+        self._oprot.writeMessageEnd()
+        self._oprot.trans.flush()
+
+    def recv_dict_return(self):
+        iprot = self._iprot
+        (fname, mtype, rseqid) = iprot.readMessageBegin()
+        if mtype == TMessageType.EXCEPTION:
+            x = TApplicationException()
+            x.read(iprot)
+            iprot.readMessageEnd()
+            raise x
+        result = dict_return_result()
+        result.read(iprot)
+        iprot.readMessageEnd()
+        if result.success is not None:
+            return result.success
+        raise TApplicationException(TApplicationException.MISSING_RESULT, "dict_return failed: unknown result")
 
     def add(self, num1, num2):
         """
@@ -131,64 +133,14 @@ class Client(shared.SharedService.Client, Iface):
             return result.success
         raise TApplicationException(TApplicationException.MISSING_RESULT, "add failed: unknown result")
 
-    def calculate(self, logid, w):
-        """
-        Parameters:
-         - logid
-         - w
-        """
-        self.send_calculate(logid, w)
-        return self.recv_calculate()
 
-    def send_calculate(self, logid, w):
-        self._oprot.writeMessageBegin('calculate', TMessageType.CALL, self._seqid)
-        args = calculate_args()
-        args.logid = logid
-        args.w = w
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_calculate(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = calculate_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        if result.ouch is not None:
-            raise result.ouch
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "calculate failed: unknown result")
-
-    def zip(self):
-        """
-        This method has a oneway modifier. That means the client only makes
-        a request and does not listen for any response at all. Oneway methods
-        must be void.
-        """
-        self.send_zip()
-
-    def send_zip(self):
-        self._oprot.writeMessageBegin('zip', TMessageType.ONEWAY, self._seqid)
-        args = zip_args()
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-
-class Processor(shared.SharedService.Processor, Iface, TProcessor):
+class Processor(Iface, TProcessor):
     def __init__(self, handler):
-        shared.SharedService.Processor.__init__(self, handler)
+        self._handler = handler
+        self._processMap = {}
         self._processMap["ping"] = Processor.process_ping
+        self._processMap["dict_return"] = Processor.process_dict_return
         self._processMap["add"] = Processor.process_add
-        self._processMap["calculate"] = Processor.process_calculate
-        self._processMap["zip"] = Processor.process_zip
 
     def process(self, iprot, oprot):
         (name, type, seqid) = iprot.readMessageBegin()
@@ -224,6 +176,25 @@ class Processor(shared.SharedService.Processor, Iface, TProcessor):
         oprot.writeMessageEnd()
         oprot.trans.flush()
 
+    def process_dict_return(self, seqid, iprot, oprot):
+        args = dict_return_args()
+        args.read(iprot)
+        iprot.readMessageEnd()
+        result = dict_return_result()
+        try:
+            result.success = self._handler.dict_return(args.key, args.name)
+            msg_type = TMessageType.REPLY
+        except (TTransport.TTransportException, KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as ex:
+            msg_type = TMessageType.EXCEPTION
+            logging.exception(ex)
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+        oprot.writeMessageBegin("dict_return", msg_type, seqid)
+        result.write(oprot)
+        oprot.writeMessageEnd()
+        oprot.trans.flush()
+
     def process_add(self, seqid, iprot, oprot):
         args = add_args()
         args.read(iprot)
@@ -243,50 +214,16 @@ class Processor(shared.SharedService.Processor, Iface, TProcessor):
         oprot.writeMessageEnd()
         oprot.trans.flush()
 
-    def process_calculate(self, seqid, iprot, oprot):
-        args = calculate_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = calculate_result()
-        try:
-            result.success = self._handler.calculate(args.logid, args.w)
-            msg_type = TMessageType.REPLY
-        except (TTransport.TTransportException, KeyboardInterrupt, SystemExit):
-            raise
-        except InvalidOperation as ouch:
-            msg_type = TMessageType.REPLY
-            result.ouch = ouch
-        except Exception as ex:
-            msg_type = TMessageType.EXCEPTION
-            logging.exception(ex)
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
-        oprot.writeMessageBegin("calculate", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
-    def process_zip(self, seqid, iprot, oprot):
-        args = zip_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        try:
-            self._handler.zip()
-        except (TTransport.TTransportException, KeyboardInterrupt, SystemExit):
-            raise
-        except:
-            pass
-
-
 # HELPER FUNCTIONS AND STRUCTURES
 
 
 class ping_args(object):
+
     thrift_spec = (
     )
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans,
-                                                         TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
             iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
             return
         iprot.readStructBegin()
@@ -323,12 +260,12 @@ class ping_args(object):
 
 
 class ping_result(object):
+
     thrift_spec = (
     )
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans,
-                                                         TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
             iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
             return
         iprot.readStructBegin()
@@ -364,6 +301,138 @@ class ping_result(object):
         return not (self == other)
 
 
+class dict_return_args(object):
+    """
+    Attributes:
+     - key
+     - name
+    """
+
+    thrift_spec = (
+        None,  # 0
+        (1, TType.STRING, 'key', 'UTF8', None, ),  # 1
+        (2, TType.STRING, 'name', 'UTF8', None, ),  # 2
+    )
+
+    def __init__(self, key=None, name=None,):
+        self.key = key
+        self.name = name
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.key = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.STRING:
+                    self.name = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, (self.__class__, self.thrift_spec)))
+            return
+        oprot.writeStructBegin('dict_return_args')
+        if self.key is not None:
+            oprot.writeFieldBegin('key', TType.STRING, 1)
+            oprot.writeString(self.key.encode('utf-8') if sys.version_info[0] == 2 else self.key)
+            oprot.writeFieldEnd()
+        if self.name is not None:
+            oprot.writeFieldBegin('name', TType.STRING, 2)
+            oprot.writeString(self.name.encode('utf-8') if sys.version_info[0] == 2 else self.name)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
+class dict_return_result(object):
+    """
+    Attributes:
+     - success
+    """
+
+    thrift_spec = (
+        (0, TType.STRUCT, 'success', (my_dict, my_dict.thrift_spec), None, ),  # 0
+    )
+
+    def __init__(self, success=None,):
+        self.success = success
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 0:
+                if ftype == TType.STRUCT:
+                    self.success = my_dict()
+                    self.success.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, (self.__class__, self.thrift_spec)))
+            return
+        oprot.writeStructBegin('dict_return_result')
+        if self.success is not None:
+            oprot.writeFieldBegin('success', TType.STRUCT, 0)
+            self.success.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
 class add_args(object):
     """
     Attributes:
@@ -373,17 +442,16 @@ class add_args(object):
 
     thrift_spec = (
         None,  # 0
-        (1, TType.I32, 'num1', None, None,),  # 1
-        (2, TType.I32, 'num2', None, None,),  # 2
+        (1, TType.I32, 'num1', None, None, ),  # 1
+        (2, TType.I32, 'num2', None, None, ),  # 2
     )
 
-    def __init__(self, num1=None, num2=None, ):
+    def __init__(self, num1=None, num2=None,):
         self.num1 = num1
         self.num2 = num2
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans,
-                                                         TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
             iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
             return
         iprot.readStructBegin()
@@ -444,15 +512,14 @@ class add_result(object):
     """
 
     thrift_spec = (
-        (0, TType.I32, 'success', None, None,),  # 0
+        (0, TType.I32, 'success', None, None, ),  # 0
     )
 
-    def __init__(self, success=None, ):
+    def __init__(self, success=None,):
         self.success = success
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans,
-                                                         TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
             iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
             return
         iprot.readStructBegin()
@@ -479,195 +546,6 @@ class add_result(object):
             oprot.writeFieldBegin('success', TType.I32, 0)
             oprot.writeI32(self.success)
             oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-class calculate_args(object):
-    """
-    Attributes:
-     - logid
-     - w
-    """
-
-    thrift_spec = (
-        None,  # 0
-        (1, TType.I32, 'logid', None, None,),  # 1
-        (2, TType.STRUCT, 'w', (Work, Work.thrift_spec), None,),  # 2
-    )
-
-    def __init__(self, logid=None, w=None, ):
-        self.logid = logid
-        self.w = w
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans,
-                                                         TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 1:
-                if ftype == TType.I32:
-                    self.logid = iprot.readI32()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 2:
-                if ftype == TType.STRUCT:
-                    self.w = Work()
-                    self.w.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, (self.__class__, self.thrift_spec)))
-            return
-        oprot.writeStructBegin('calculate_args')
-        if self.logid is not None:
-            oprot.writeFieldBegin('logid', TType.I32, 1)
-            oprot.writeI32(self.logid)
-            oprot.writeFieldEnd()
-        if self.w is not None:
-            oprot.writeFieldBegin('w', TType.STRUCT, 2)
-            self.w.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-class calculate_result(object):
-    """
-    Attributes:
-     - success
-     - ouch
-    """
-
-    thrift_spec = (
-        (0, TType.I32, 'success', None, None,),  # 0
-        (1, TType.STRUCT, 'ouch', (InvalidOperation, InvalidOperation.thrift_spec), None,),  # 1
-    )
-
-    def __init__(self, success=None, ouch=None, ):
-        self.success = success
-        self.ouch = ouch
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans,
-                                                         TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.I32:
-                    self.success = iprot.readI32()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 1:
-                if ftype == TType.STRUCT:
-                    self.ouch = InvalidOperation()
-                    self.ouch.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, (self.__class__, self.thrift_spec)))
-            return
-        oprot.writeStructBegin('calculate_result')
-        if self.success is not None:
-            oprot.writeFieldBegin('success', TType.I32, 0)
-            oprot.writeI32(self.success)
-            oprot.writeFieldEnd()
-        if self.ouch is not None:
-            oprot.writeFieldBegin('ouch', TType.STRUCT, 1)
-            self.ouch.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-class zip_args(object):
-    thrift_spec = (
-    )
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans,
-                                                         TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, (self.__class__, self.thrift_spec))
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, (self.__class__, self.thrift_spec)))
-            return
-        oprot.writeStructBegin('zip_args')
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
